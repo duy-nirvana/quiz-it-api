@@ -7,15 +7,14 @@ const MONGOURI = 'mongodb+srv://duynirvana:KMB7MmAu7Q1ECibx@quiz-it.ag4mg.mongod
 const InitiateMongoServer = async () => {
     try {
         await mongoose.connect(MONGOURI, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
+            // useNewUrlParser: true,
+            // useUnifiedTopology: true,
             // useCreateIndex: true,
             // useFindAndModify: false
         });
         console.log('Connected to DB !!');
     } catch (e) {
         console.error(e);
-        console.log('LỖI LỖI')
         throw e;
     }
 };

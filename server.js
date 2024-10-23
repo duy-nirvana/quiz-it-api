@@ -4,7 +4,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const InitiateMongoServer = require('./src/config/db');
 
-const bookRoute = require('./src/routes/book.route');
+const useRoutes = require('./src/routes');
 
 const app = express();
 const port = 8000;
@@ -16,14 +16,16 @@ app.use(bodyParser.json());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use('/api/books', bookRoute);
+useRoutes(app);
 
-app.set('view engine', 'html');
-app.set('views', './src/views');
+app.get('*', async (req, res) => {
+    res.status(200).send('<h3>Welcome to QuizIT API</h3>');
+});
+
+// app.set('view engine', 'html');
+// app.set('views', './src/views');
 // app.engine('html', require('ejs').renderFile);
 
-mongoose.connection.useDb('QuizITData')
-
 app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
+    console.log(`Server is running on localhost:${port}`);
 });

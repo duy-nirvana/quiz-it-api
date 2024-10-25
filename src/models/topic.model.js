@@ -18,11 +18,11 @@ const topicSchema = new Schema(
                 ref: 'Question'
             }
         ],
-        // created_by: {
-        //     type: Types.ObjectId,
-        //     ref: 'User',
-        //     required: true
-        // },
+        created_by: {
+            type: Types.ObjectId,
+            ref: 'User',
+            required: true
+        },
         play_count: {
             type: Number,
             default: 0

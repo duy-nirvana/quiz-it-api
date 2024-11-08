@@ -18,7 +18,7 @@ const passwordResetTokenSchema = Schema({
 
 const userSchema = new Schema(
     {
-        username: { type: String, required: true, unique: true },
+        username: { type: String, unique: true },
         email: { type: String, required: true, unique: true },
         password_hash: { type: String, required: true },
         salt: { type: String, required: true },

@@ -1,6 +1,6 @@
-const Topic = require('../models/topic.model');
+const Topic = require('../models/quiz.model');
 
-exports.getAllTopics = async (req, res) => {
+exports.getAll = async (req, res) => {
     try {
         const topics = await Topic.find({});
 
@@ -10,7 +10,7 @@ exports.getAllTopics = async (req, res) => {
     }
 };
 
-exports.createTopic = async (req, res) => {
+exports.createQuiz = async (req, res) => {
     try {
         const { host_id, ...rest } = req.body;
 

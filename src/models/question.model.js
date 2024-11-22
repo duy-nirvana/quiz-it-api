@@ -5,7 +5,8 @@ const Types = Schema.Types;
 
 const questionSchema = new Schema(
     {
-        type: { type: String, enum: [...QUESTION_TYPE], default: QUESTION_TYPE.QUIZ },
+        text: { type: String, required: true },
+        type: { type: String, enum: Object.values(QUESTION_TYPE), default: QUESTION_TYPE.QUIZ },
         thumbnail: {
             type: String
         },
@@ -15,21 +16,25 @@ const questionSchema = new Schema(
         },
         point_type: {
             type: String,
-            enum: [...QUESTION_POINT_TYPE],
+            enum: Object.values(QUESTION_POINT_TYPE),
             default: QUESTION_POINT_TYPE.STANDARD
         },
         answer_type: {
             type: String,
-            enum: [...ANSWER_TYPE],
+            enum: Object.values(ANSWER_TYPE),
             default: ANSWER_TYPE.SINGLE
         },
         answers: [
             {
                 type: Types.ObjectId,
                 ref: 'Answer',
-                required: true
             }
-        ]
+        ],
+        quiz_id: {
+            type: Types.ObjectId,
+            ref: 'Quiz',
+            required: true
+        }
     },
     { timestamps: true }
 );

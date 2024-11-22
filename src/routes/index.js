@@ -1,11 +1,11 @@
-const bookRoute = require('./book.route');
-const topicRoute = require('./topic.route');
+const quizRoute = require('./quiz.route');
 const authRoute = require('./auth.route');
+const personalRoute = require('./personal.route');
 
 const useRoutes = (app) => {
-    app.use('/api/book', bookRoute);
-    app.use('/api/topic', topicRoute);
+    app.use('/api/quiz', quizRoute);
     app.use('/api/auth', authRoute);
+    app.use('/api/personal', personalRoute);
 };
 
 module.exports = useRoutes;

@@ -1,7 +1,25 @@
-const mongoose = require('mongoose');
+const { Schema, model } = require('mongoose');
 
-const answerSchema = new mongoose.Schema({
-    
-}, { timestamps: true });
+const Types = Schema.Types;
 
-module.exports = mongoose.model('Answer', answerSchema);
+const answerSchema = new Schema(
+    {
+        question_id: {
+            type: Types.ObjectId,
+            ref: 'Question',
+            required: true
+        },
+        is_correct: {
+            type: Boolean,
+            default: false,
+            required: true
+        },
+        text: {
+            type: String,
+            required: true
+        }
+    },
+    { timestamps: true }
+);
+
+module.exports = model('Answer', answerSchema);

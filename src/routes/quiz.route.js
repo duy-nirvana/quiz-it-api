@@ -4,6 +4,7 @@ const quizController = require('../controllers/quiz.controller');
 const authMiddleware = require('../middlewares/auth.middleware');
 
 router.get('/', authMiddleware, quizController.getAll);
-router.post('/', authMiddleware, quizController.createQuiz);
+router.get('/:id', authMiddleware, quizController.getById);
+router.post('/create', authMiddleware, quizController.createQuiz);
 
 module.exports = router;

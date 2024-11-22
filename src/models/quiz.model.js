@@ -5,11 +5,12 @@ const Types = Schema.Types;
 
 const quizSchema = new Schema(
     {
-        name: { type: String, require: true },
+        title: { type: String, require: true },
+        description: { type: String },
         is_private: { type: Boolean, require: true, default: false },
         host_id: {
             type: String,
-            unique: true, // Ensure the host_id is unique
+            unique: true,
             immutable: true
         },
         questions: [
@@ -34,7 +35,7 @@ const quizSchema = new Schema(
 quizSchema.set('toJSON', {
     transform: function (doc, ret, options) {
         ret.id = ret._id;
-        delete ret._id; // Remove _id
+        delete ret._id;
         return ret;
     }
 });

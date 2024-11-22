@@ -15,7 +15,7 @@ const generateUniqueHostId = async function (next) {
             generatedCode = generate5CharCode();
 
             // Check if the generated code already exists
-            const existingDoc = await mongoose.models.Topic.findOne({ host_id: generatedCode });
+            const existingDoc = await mongoose.models.Quiz.findOne({ host_id: generatedCode });
 
             if (!existingDoc) {
                 unique = true;

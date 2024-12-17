@@ -30,7 +30,7 @@ exports.login = async (req, res) => {
         }
 
         const access_token = jwt.sign({ id: user._id, roles: user.roles }, process.env.JWT_SECRET, {
-            expiresIn: '1h'
+            expiresIn: '10h'
         });
         user.last_login = new Date();
         await user.save();

@@ -47,8 +47,6 @@ exports.createQuiz = async (req, res) => {
             throw new Error('Questions are required');
         }
 
-        console.log({ rest });
-
         const quiz = await Quiz.create(
             [
                 {
@@ -62,10 +60,16 @@ exports.createQuiz = async (req, res) => {
 
         const questionIds = [];
         for (const question of questions) {
+            const { text, type, thumbnail, time_limit, point_type, answer_type } = question;
             const questionDoc = await Question.create(
                 [
                     {
-                        text: question.text,
+                        text,
+                        type,
+                        thumbnail,
+                        answer_type,
+                        time_limit,
+                        point_type,
                         quiz_id: quizId
                     }
                 ],

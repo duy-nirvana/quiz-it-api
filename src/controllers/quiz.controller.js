@@ -271,141 +271,123 @@ exports.updateQuiz = async (req, res) => {
             throw new Error('Quiz not found');
         }
 
-        // Update quiz's main details
-        Object.assign(quiz, rest);
+        Object.assign(quiz, rest); // Update only the provided quiz fields (e.g., title)
         await quiz.save({ session });
 
-        const existingQuestions = await Question.find({ quiz_id }).session(session);
-        const existingQuestionIds = existingQuestions.map((q) => q._id.toString());
+        // Check if `questions` is provided and is an array
+        if (questions && Array.isArray(questions)) {
+            const updatedQuestionIds = [];
+            const bulkQuestions = [];
+            const bulkAnswers = [];
+            const removedAnswerIds = [];
+            const newAnswers = [];
 
-        const updatedQuestionIds = [];
-        const bulkQuestions = [];
-        const bulkAnswers = [];
-        const removedAnswerIds = [];
-        const newAnswers = [];
+            for (const question of questions) {
+                let questionId;
 
-        for (const question of questions) {
-            let questionId;
+                if (question._id) {
+                    questionId = question._id;
+                    bulkQuestions.push({
+                        updateOne: {
+                            filter: { _id: questionId },
+                            update: {
+                                text: question.text,
+                                type: question.type,
+                                thumbnail: question.thumbnail,
+                                time_limit: question.time_limit,
+                                point_type: question.point_type,
+                                answer_type: question.answer_type
+                            }
+                        }
+                    });
 
-            if (question._id) {
-                // Update existing question
-                questionId = question._id;
-                bulkQuestions.push({
-                    updateOne: {
-                        filter: { _id: questionId },
-                        update: {
-                            text: question.text,
-                            type: question.type,
-                            thumbnail: question.thumbnail,
-                            time_limit: question.time_limit,
-                            point_type: question.point_type,
-                            answer_type: question.answer_type
+                    const existingAnswers = await Answer.find({ question_id: questionId }).session(
+                        session
+                    );
+                    const existingAnswerIds = existingAnswers.map((a) => a._id.toString());
+                    const updatedAnswerIds = [];
+
+                    for (const answer of question.answers || []) {
+                        if (answer._id) {
+                            updatedAnswerIds.push(answer._id);
+                            bulkAnswers.push({
+                                updateOne: {
+                                    filter: { _id: answer._id },
+                                    update: { text: answer.text, is_correct: answer.is_correct }
+                                }
+                            });
+                        } else {
+                            newAnswers.push({
+                                text: answer.text,
+                                is_correct: answer.is_correct,
+                                question_id: questionId
+                            });
                         }
                     }
-                });
 
-                // Find existing answers for this question
-                const existingAnswers = await Answer.find({ question_id: questionId }).session(
-                    session
-                );
-                const existingAnswerIds = existingAnswers.map((a) => a._id.toString());
-                const updatedAnswerIds = [];
+                    const toRemove = existingAnswerIds.filter(
+                        (id) => !updatedAnswerIds.includes(id)
+                    );
+                    removedAnswerIds.push(...toRemove);
+                } else {
+                    const newQuestion = new Question({
+                        text: question.text,
+                        type: question.type,
+                        thumbnail: question.thumbnail,
+                        time_limit: question.time_limit,
+                        point_type: question.point_type,
+                        answer_type: question.answer_type,
+                        quiz_id
+                    });
 
-                for (const answer of question.answers) {
-                    if (answer._id) {
-                        // Update existing answer
-                        updatedAnswerIds.push(answer._id);
-                        bulkAnswers.push({
-                            updateOne: {
-                                filter: { _id: answer._id },
-                                update: { text: answer.text, is_correct: answer.is_correct }
-                            }
-                        });
-                    } else {
-                        // Create new answer
-                        newAnswers.push({
-                            text: answer.text,
-                            is_correct: answer.is_correct,
-                            question_id: questionId
-                        });
-                    }
+                    const savedQuestion = await newQuestion.save({ session });
+                    questionId = savedQuestion._id;
+
+                    const answers = question.answers.map((answer) => ({
+                        text: answer.text,
+                        is_correct: answer.is_correct,
+                        question_id: questionId
+                    }));
+
+                    const createdAnswers = await Answer.insertMany(answers, { session });
+                    savedQuestion.answers = createdAnswers.map((answer) => answer._id);
+                    await savedQuestion.save({ session });
                 }
 
-                // Remove answers that are not part of the update
-                const toRemove = existingAnswerIds.filter((id) => !updatedAnswerIds.includes(id));
-                removedAnswerIds.push(...toRemove);
-            } else {
-                // Create new question
-                const newQuestion = new Question({
-                    text: question.text,
-                    type: question.type,
-                    thumbnail: question.thumbnail,
-                    time_limit: question.time_limit,
-                    point_type: question.point_type,
-                    answer_type: question.answer_type,
-                    quiz_id
-                });
-
-                const savedQuestion = await newQuestion.save({ session });
-                questionId = savedQuestion._id;
-
-                // Add answers for the newly created question
-                const answers = question.answers.map((answer) => ({
-                    text: answer.text,
-                    is_correct: answer.is_correct,
-                    question_id: questionId
-                }));
-
-                const createdAnswers = await Answer.insertMany(answers, { session });
-                savedQuestion.answers = createdAnswers.map((answer) => answer._id);
-                await savedQuestion.save({ session });
+                updatedQuestionIds.push(questionId);
             }
 
-            updatedQuestionIds.push(questionId);
-        }
-
-        // Perform bulk operations
-        if (bulkQuestions.length > 0) {
-            await Question.bulkWrite(bulkQuestions, { session });
-        }
-
-        if (bulkAnswers.length > 0) {
-            await Answer.bulkWrite(bulkAnswers, { session });
-        }
-
-        if (newAnswers.length > 0) {
-            const createdAnswers = await Answer.insertMany(newAnswers, { session });
-            // Link the new answers to their respective questions
-            for (const answer of createdAnswers) {
-                await Question.updateOne(
-                    { _id: answer.question_id },
-                    { $push: { answers: answer._id } },
-                    { session }
-                );
+            if (bulkQuestions.length > 0) {
+                await Question.bulkWrite(bulkQuestions, { session });
             }
-        }
 
-        if (removedAnswerIds.length > 0) {
-            await Answer.deleteMany({ _id: { $in: removedAnswerIds } }).session(session);
-        }
+            if (bulkAnswers.length > 0) {
+                await Answer.bulkWrite(bulkAnswers, { session });
+            }
 
-        // Remove questions not included in the update
-        const removedQuestionIds = existingQuestionIds.filter(
-            (id) => !updatedQuestionIds.includes(id)
-        );
-        if (removedQuestionIds.length > 0) {
-            await Answer.deleteMany({ question_id: { $in: removedQuestionIds } }).session(session);
-            await Question.deleteMany({ _id: { $in: removedQuestionIds } }).session(session);
-        }
+            if (newAnswers.length > 0) {
+                const createdAnswers = await Answer.insertMany(newAnswers, { session });
+                for (const answer of createdAnswers) {
+                    await Question.updateOne(
+                        { _id: answer.question_id },
+                        { $push: { answers: answer._id } },
+                        { session }
+                    );
+                }
+            }
 
-        // Update quiz's questions array
-        quiz.questions = updatedQuestionIds;
-        await quiz.save({ session });
+            if (removedAnswerIds.length > 0) {
+                await Answer.deleteMany({ _id: { $in: removedAnswerIds } }).session(session);
+            }
+
+            quiz.questions = updatedQuestionIds;
+            await quiz.save({ session });
+        }
 
         await session.commitTransaction();
         session.endSession();
 
-        const updatedQuiz = await Quiz.findById(quiz_id).populate({
+        const populatedQuiz = await Quiz.findById(quiz_id).populate({
             path: 'questions',
             populate: { path: 'answers' }
         });
@@ -413,7 +395,7 @@ exports.updateQuiz = async (req, res) => {
         res.status(200).json({
             success: true,
             message: 'Quiz updated successfully',
-            data: updatedQuiz
+            data: populatedQuiz
         });
     } catch (error) {
         if (session.inTransaction()) {
@@ -421,7 +403,70 @@ exports.updateQuiz = async (req, res) => {
         }
         session.endSession();
 
-        console.error('Error updating quiz:', error);
-        res.status(500).json({ success: false, error: 'Failed to update quiz' });
+        console.error('Error updating quiz:', error.stack || error);
+        res.status(500).json({ success: false, error: error.message || 'Failed to update quiz' });
+    }
+};
+
+exports.deleteQuiz = async (req, res) => {
+    const session = await mongoose.startSession();
+
+    try {
+        session.startTransaction();
+
+        const { quiz_id } = req.params;
+
+        if (!quiz_id) {
+            throw new Error('Quiz ID is required');
+        }
+
+        console.log('Fetching quiz with id:', quiz_id);
+
+        // Find the quiz by ID
+        const quiz = await Quiz.findById(quiz_id).session(session);
+        if (!quiz) {
+            throw new Error('Quiz not found');
+        }
+
+        console.log('Deleting quiz and related data...');
+
+        // Find all questions associated with the quiz
+        const questions = await Question.find({ quiz_id }).session(session);
+        const questionIds = questions.map((question) => question._id);
+
+        // Find all answers associated with the questions
+        if (questionIds.length > 0) {
+            await Answer.deleteMany({ question_id: { $in: questionIds } }).session(session);
+            console.log('Deleted all answers related to the quiz.');
+        }
+
+        // Delete all questions associated with the quiz
+        await Question.deleteMany({ quiz_id }).session(session);
+        console.log('Deleted all questions related to the quiz.');
+
+        // Delete the quiz itself
+        await Quiz.findByIdAndDelete(quiz_id).session(session);
+        console.log('Deleted the quiz.');
+
+        // Commit the transaction
+        await session.commitTransaction();
+        session.endSession();
+
+        res.status(200).json({
+            success: true,
+            message: 'Quiz and all associated data deleted successfully'
+        });
+    } catch (error) {
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+        }
+        session.endSession();
+
+        console.error('Error deleting quiz:', error.stack || error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to delete quiz',
+            error: error.message || 'An error occurred'
+        });
     }
 };

@@ -117,3 +117,311 @@ exports.createQuiz = async (req, res) => {
         res.status(500).json({ success: false, error: 'Failed to create quiz' });
     }
 };
+
+// exports.updateQuiz = async (req, res) => {
+//     const session = await Quiz.startSession();
+
+//     try {
+//         session.startTransaction();
+
+//         const { id: quiz_id, questions, ...rest } = req.body;
+
+//         if (!quiz_id) {
+//             throw new Error('Quiz ID is required');
+//         }
+
+//         const quiz = await Quiz.findById(quiz_id).session(session);
+//         if (!quiz) {
+//             throw new Error('Quiz not found');
+//         }
+
+//         // Update quiz's main details
+//         Object.assign(quiz, rest);
+//         await quiz.save({ session });
+
+//         const existingQuestions = await Question.find({ quiz_id }).session(session);
+//         const existingQuestionIds = existingQuestions.map((q) => q._id.toString());
+
+//         const updatedQuestionIds = [];
+//         for (const question of questions) {
+//             let questionDoc;
+//             if (question._id) {
+//                 // If the question has an ID, update it
+//                 questionDoc = await Question.findById(question._id).session(session);
+//                 if (!questionDoc) {
+//                     throw new Error(`Question with ID ${question._id} not found`);
+//                 }
+
+//                 Object.assign(questionDoc, {
+//                     text: question.text,
+//                     type: question.type,
+//                     thumbnail: question.thumbnail,
+//                     time_limit: question.time_limit,
+//                     point_type: question.point_type,
+//                     answer_type: question.answer_type
+//                 });
+//             } else {
+//                 // If the question doesn't have an ID, create a new one
+//                 questionDoc = new Question({
+//                     text: question.text,
+//                     type: question.type,
+//                     thumbnail: question.thumbnail,
+//                     time_limit: question.time_limit,
+//                     point_type: question.point_type,
+//                     answer_type: question.answer_type,
+//                     quiz_id
+//                 });
+//             }
+
+//             await questionDoc.save({ session });
+//             updatedQuestionIds.push(questionDoc._id);
+
+//             const existingAnswers = await Answer.find({ question_id: questionDoc._id }).session(
+//                 session
+//             );
+//             const existingAnswerIds = existingAnswers.map((a) => a._id.toString());
+
+//             const updatedAnswerIds = [];
+//             for (const answer of question.answers) {
+//                 let answerDoc;
+//                 if (answer._id) {
+//                     // If the answer has an ID, update it
+//                     answerDoc = await Answer.findById(answer._id).session(session);
+//                     if (!answerDoc) {
+//                         throw new Error(`Answer with ID ${answer._id} not found`);
+//                     }
+
+//                     Object.assign(answerDoc, {
+//                         text: answer.text,
+//                         is_correct: answer.is_correct
+//                     });
+//                 } else {
+//                     // If the answer doesn't have an ID, create a new one
+//                     answerDoc = new Answer({
+//                         text: answer.text,
+//                         is_correct: answer.is_correct,
+//                         question_id: questionDoc._id
+//                     });
+//                 }
+
+//                 await answerDoc.save({ session });
+//                 updatedAnswerIds.push(answerDoc._id);
+//             }
+
+//             // Remove answers that are no longer in the updated list
+//             const removedAnswerIds = existingAnswerIds.filter(
+//                 (id) => !updatedAnswerIds.includes(id)
+//             );
+//             await Answer.deleteMany({ _id: { $in: removedAnswerIds } }).session(session);
+
+//             questionDoc.answers = updatedAnswerIds;
+//             await questionDoc.save({ session });
+//         }
+
+//         // Remove questions that are no longer in the updated list
+//         const removedQuestionIds = existingQuestionIds.filter(
+//             (id) => !updatedQuestionIds.includes(id)
+//         );
+
+//         await Answer.deleteMany({ question_id: { $in: removedQuestionIds } }).session(session);
+//         await Question.deleteMany({ _id: { $in: removedQuestionIds } }).session(session);
+
+//         // Update quiz's questions array
+//         quiz.questions = updatedQuestionIds;
+//         await quiz.save({ session });
+
+//         await session.commitTransaction();
+//         session.endSession();
+
+//         const updatedQuiz = await Quiz.findById(quiz_id).populate({
+//             path: 'questions',
+//             populate: { path: 'answers' }
+//         });
+
+//         res.status(200).json({
+//             success: true,
+//             message: 'Quiz updated successfully',
+//             data: updatedQuiz
+//         });
+//     } catch (error) {
+//         if (session.inTransaction()) {
+//             await session.abortTransaction();
+//         }
+//         session.endSession();
+
+//         console.error('Error updating quiz:', error);
+//         res.status(500).json({ success: false, error: 'Failed to update quiz' });
+//     }
+// };
+
+exports.updateQuiz = async (req, res) => {
+    const session = await Quiz.startSession();
+
+    try {
+        session.startTransaction();
+
+        const { id: quiz_id, questions, ...rest } = req.body;
+
+        if (!quiz_id) {
+            throw new Error('Quiz ID is required');
+        }
+
+        const quiz = await Quiz.findById(quiz_id).session(session);
+        if (!quiz) {
+            throw new Error('Quiz not found');
+        }
+
+        // Update quiz's main details
+        Object.assign(quiz, rest);
+        await quiz.save({ session });
+
+        const existingQuestions = await Question.find({ quiz_id }).session(session);
+        const existingQuestionIds = existingQuestions.map((q) => q._id.toString());
+
+        const updatedQuestionIds = [];
+        const bulkQuestions = [];
+        const bulkAnswers = [];
+        const removedAnswerIds = [];
+        const newAnswers = [];
+
+        for (const question of questions) {
+            let questionId;
+
+            if (question._id) {
+                // Update existing question
+                questionId = question._id;
+                bulkQuestions.push({
+                    updateOne: {
+                        filter: { _id: questionId },
+                        update: {
+                            text: question.text,
+                            type: question.type,
+                            thumbnail: question.thumbnail,
+                            time_limit: question.time_limit,
+                            point_type: question.point_type,
+                            answer_type: question.answer_type
+                        }
+                    }
+                });
+
+                // Find existing answers for this question
+                const existingAnswers = await Answer.find({ question_id: questionId }).session(
+                    session
+                );
+                const existingAnswerIds = existingAnswers.map((a) => a._id.toString());
+                const updatedAnswerIds = [];
+
+                for (const answer of question.answers) {
+                    if (answer._id) {
+                        // Update existing answer
+                        updatedAnswerIds.push(answer._id);
+                        bulkAnswers.push({
+                            updateOne: {
+                                filter: { _id: answer._id },
+                                update: { text: answer.text, is_correct: answer.is_correct }
+                            }
+                        });
+                    } else {
+                        // Create new answer
+                        newAnswers.push({
+                            text: answer.text,
+                            is_correct: answer.is_correct,
+                            question_id: questionId
+                        });
+                    }
+                }
+
+                // Remove answers that are not part of the update
+                const toRemove = existingAnswerIds.filter((id) => !updatedAnswerIds.includes(id));
+                removedAnswerIds.push(...toRemove);
+            } else {
+                // Create new question
+                const newQuestion = new Question({
+                    text: question.text,
+                    type: question.type,
+                    thumbnail: question.thumbnail,
+                    time_limit: question.time_limit,
+                    point_type: question.point_type,
+                    answer_type: question.answer_type,
+                    quiz_id
+                });
+
+                const savedQuestion = await newQuestion.save({ session });
+                questionId = savedQuestion._id;
+
+                // Add answers for the newly created question
+                const answers = question.answers.map((answer) => ({
+                    text: answer.text,
+                    is_correct: answer.is_correct,
+                    question_id: questionId
+                }));
+
+                const createdAnswers = await Answer.insertMany(answers, { session });
+                savedQuestion.answers = createdAnswers.map((answer) => answer._id);
+                await savedQuestion.save({ session });
+            }
+
+            updatedQuestionIds.push(questionId);
+        }
+
+        // Perform bulk operations
+        if (bulkQuestions.length > 0) {
+            await Question.bulkWrite(bulkQuestions, { session });
+        }
+
+        if (bulkAnswers.length > 0) {
+            await Answer.bulkWrite(bulkAnswers, { session });
+        }
+
+        if (newAnswers.length > 0) {
+            const createdAnswers = await Answer.insertMany(newAnswers, { session });
+            // Link the new answers to their respective questions
+            for (const answer of createdAnswers) {
+                await Question.updateOne(
+                    { _id: answer.question_id },
+                    { $push: { answers: answer._id } },
+                    { session }
+                );
+            }
+        }
+
+        if (removedAnswerIds.length > 0) {
+            await Answer.deleteMany({ _id: { $in: removedAnswerIds } }).session(session);
+        }
+
+        // Remove questions not included in the update
+        const removedQuestionIds = existingQuestionIds.filter(
+            (id) => !updatedQuestionIds.includes(id)
+        );
+        if (removedQuestionIds.length > 0) {
+            await Answer.deleteMany({ question_id: { $in: removedQuestionIds } }).session(session);
+            await Question.deleteMany({ _id: { $in: removedQuestionIds } }).session(session);
+        }
+
+        // Update quiz's questions array
+        quiz.questions = updatedQuestionIds;
+        await quiz.save({ session });
+
+        await session.commitTransaction();
+        session.endSession();
+
+        const updatedQuiz = await Quiz.findById(quiz_id).populate({
+            path: 'questions',
+            populate: { path: 'answers' }
+        });
+
+        res.status(200).json({
+            success: true,
+            message: 'Quiz updated successfully',
+            data: updatedQuiz
+        });
+    } catch (error) {
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+        }
+        session.endSession();
+
+        console.error('Error updating quiz:', error);
+        res.status(500).json({ success: false, error: 'Failed to update quiz' });
+    }
+};

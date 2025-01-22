@@ -8,11 +8,11 @@ const quizSchema = new Schema(
         title: { type: String, require: true },
         description: { type: String },
         is_private: { type: Boolean, require: true, default: false },
-        host_id: {
-            type: String,
-            unique: true,
-            immutable: true
-        },
+        // host_id: {
+        //     type: String,
+        //     unique: true,
+        //     immutable: true
+        // },
         questions: [
             {
                 type: Types.ObjectId,
@@ -27,7 +27,13 @@ const quizSchema = new Schema(
         play_count: {
             type: Number,
             default: 0
-        }
+        },
+        hosting_sessions: [
+            {
+                type: Types.ObjectId,
+                ref: 'Session'
+            }
+        ]
     },
     { timestamps: true }
 );

@@ -2,6 +2,15 @@ const jwt = require('jsonwebtoken');
 
 const authMiddleware = (req, res, next) => {
     const token = req.headers['authorization']?.split(' ')[1];
+    console.log('PARAMSSSS', req.query);
+
+    if (req.query.is_temp)
+        return res.status(200).json({
+            message: 'Fetch temp personal successfully!',
+            data: {
+                is_temp: true
+            }
+        });
 
     if (!token) {
         return res.status(401).json({ message: 'Access token required' });

@@ -5,7 +5,7 @@ const Types = Schema.Types;
 
 const sessionSchema = new Schema(
     {
-        quiz_id: {
+        quiz: {
             type: Types.ObjectId,
             ref: 'Quiz',
             required: true
@@ -25,12 +25,13 @@ const sessionSchema = new Schema(
         },
         participants: [
             {
+                socket_id: { type: String },
                 user: { type: Types.ObjectId, ref: 'User' },
                 name: { type: String },
                 joined_at: { type: Date, default: Date.now }
             }
         ],
-        active: { type: Boolean, default: true },
+        is_active: { type: Boolean, default: false },
         game_settings: {
             // time_limit: { type: Number, default: 0 }, // Time limit per question in seconds
             max_participants: { type: Number, default: 9999 }

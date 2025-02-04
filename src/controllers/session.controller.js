@@ -5,11 +5,19 @@ exports.getById = async (req, res) => {
     try {
         const { id } = req.params;
 
-        const session = await Session.find({ host_id: id });
+        const session = await Session.findOne({ host_id: id }).populate({
+            path: 'quiz',
+            populate: {
+                path: 'questions',
+                populate: {
+                    path: 'answers'
+                }
+            }
+        });
 
-        if (!session.length) throw new Error('Not found session!');
+        if (!session) throw new Error('Not found session!');
 
-        res.status(200).json({ success: true, message: 'Fetch successfully!', data: session[0] });
+        res.status(200).json({ success: true, message: 'Fetch successfully!', data: session });
     } catch (error) {
         res.status(400).json({ success: false, message: 'Fail to fetch!', error: error.message });
     }
@@ -17,17 +25,17 @@ exports.getById = async (req, res) => {
 
 exports.createSession = async (req, res) => {
     try {
-        const { host_id, ...rest } = req.body;
-
-        const session = new Session({ ...rest });
+        const data = req.body;
+        const session = new Session({ ...data, quiz: data.quiz_id });
 
         await Quiz.findByIdAndUpdate(
-            rest.quiz_id,
+            data.quiz_id,
             { $push: { hosting_sessions: session._id } },
             { new: true }
         );
 
-        const savedSession = await session.save();
+        const savedSession = await session.save().then((session) => session.populate('quiz'));
+
         res.status(201).json({
             success: true,
             message: 'Created successfully',

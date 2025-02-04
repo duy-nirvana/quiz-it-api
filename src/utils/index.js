@@ -6,3 +6,15 @@ exports.generate5CharCode = () => {
     }
     return result;
 };
+
+exports.populateQuiz = (session) => {
+    return session.populate({
+        path: 'quiz',
+        populate: {
+            path: 'questions',
+            populate: {
+                path: 'answers'
+            }
+        }
+    });
+};

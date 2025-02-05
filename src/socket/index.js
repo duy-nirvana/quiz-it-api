@@ -4,7 +4,7 @@ const { Server } = require('socket.io');
 const { populateQuiz } = require('../utils');
 
 const emitQuizDetail = async (socket, session) => {
-    const newSession = await session.populate({
+    const updatedSession = session.populate({
         path: 'quiz',
         populate: {
             path: 'questions',
@@ -15,7 +15,7 @@ const emitQuizDetail = async (socket, session) => {
         }
     });
 
-    socket.emit('quiz_info', newSession);
+    socket.emit('quiz_info', updatedSession);
 };
 
 const useSocket = (server, io) => {
@@ -80,10 +80,11 @@ const useSocket = (server, io) => {
                 // socket.emit('session_info', session);
                 // socket.emit('session_active', false);
                 // emitSessionInfo(socket, session);
-                
+
                 // Notify the host of the new participant
                 io.to(hostId).emit('new_participant', newParticipant);
                 emitQuizDetail(socket, session);
+                io.emit('session_active', false);
             } catch (error) {
                 console.error('Error joining session:', error);
             }
@@ -105,9 +106,11 @@ const useSocket = (server, io) => {
                 socket.on('disconnect', async () => {
                     console.log(`HOST ${hostId} disconnected`);
 
-                    session.is_active = false;
-                    await session.save();
+                    console.log('RUN HEEEEEEEEEEEEEEEEEEEEEEEEEEEERRRRRRRRRE');
 
+                    await Session.updateOne({ _id: session._id }, { $set: { is_active: false } });
+
+                    // io.emit('quiz_info', session);
                     io.emit('session_active', false);
                     socket.leave(hostId);
                 });
@@ -139,11 +142,13 @@ const useSocket = (server, io) => {
                 }
 
                 io.emit('session_active', true);
-                session.is_active = true; // Game started
-                await session.save();
+                // session.is_active = true; // Game started
+                // await session.save();
+                await Session.updateOne({ _id: session._id }, { $set: { is_active: true } });
 
                 // Emit game started event to all participants
                 // io.emit('session_info', session); // Broadcast session info
+                // emitQuizDetail(io, session);
             } catch (error) {
                 console.error('Error starting game:', error);
             }
@@ -200,6 +205,7 @@ const useSocket = (server, io) => {
                     io.to(hostId).emit('participant_left', {
                         socket_id: disconnectedParticipant.socket_id
                     });
+                    // socket.emit('session_active', false);
                 } catch (error) {
                     console.error('Error removing participant from session:', error);
                 }

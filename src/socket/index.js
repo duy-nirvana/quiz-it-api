@@ -4,7 +4,7 @@ const { Server } = require('socket.io');
 const { populateQuiz } = require('../utils');
 
 const emitQuizDetail = async (socket, session) => {
-    const updatedSession = session.populate({
+    const updatedSession = await session.populate({
         path: 'quiz',
         populate: {
             path: 'questions',
@@ -30,7 +30,7 @@ const useSocket = (server, io) => {
         console.log('A user connected: ', socket.id);
         let currentSessionId = null;
         // When a participant joins the session
-        socket.on('join_session', async ({ hostId, name, user }) => {
+        socket.on('join_session', async ({ hostId, name, user, avatar }) => {
             try {
                 const session = await Session.findOne({ host_id: hostId });
                 if (!session) {
@@ -61,7 +61,8 @@ const useSocket = (server, io) => {
                 // const matchName = session.participants.find(participant => partici)
 
                 let newParticipant = {
-                    socket_id: socket.id
+                    socket_id: socket.id,
+                    avatar
                 };
                 if (user) {
                     // Add the participant (just simulate participant for now)

@@ -28,7 +28,8 @@ const sessionSchema = new Schema(
                 socket_id: { type: String },
                 user: { type: Types.ObjectId, ref: 'User' },
                 name: { type: String },
-                joined_at: { type: Date, default: Date.now }
+                joined_at: { type: Date, default: Date.now },
+                avatar: { type: Object }
             }
         ],
         is_active: { type: Boolean, default: false },

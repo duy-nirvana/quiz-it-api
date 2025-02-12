@@ -155,6 +155,18 @@ const useSocket = (server, io) => {
             }
         });
 
+        socket.on('select_answer', async (data) => {
+            try {
+                const { hostId, participantId, answerIndex } = data || {};
+                io.to(hostId).emit('participant_selected', {
+                    participantId,
+                    answerIndex
+                });
+            } catch (error) {
+                console.error('Fail to select answer:', error);
+            }
+        });
+
         // When the host ends the game
         socket.on('end_game', async (hostId) => {
             try {

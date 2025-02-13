@@ -83,7 +83,7 @@ const useSocket = (server, io) => {
                 // emitSessionInfo(socket, session);
 
                 // Notify the host of the new participant
-                io.to(hostId).emit('new_participant', newParticipant);
+                io.emit('new_participant', newParticipant);
                 emitQuizDetail(socket, session);
                 io.emit('session_active', false);
             } catch (error) {
@@ -157,11 +157,9 @@ const useSocket = (server, io) => {
 
         socket.on('select_answer', async (data) => {
             try {
-                const { hostId, participantId, answerIndex } = data || {};
-                io.to(hostId).emit('participant_selected', {
-                    participantId,
-                    answerIndex
-                });
+                const { hostId, ...props } = data;
+
+                io.to(hostId).emit('participant_selected', props);
             } catch (error) {
                 console.error('Fail to select answer:', error);
             }

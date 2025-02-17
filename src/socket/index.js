@@ -19,13 +19,6 @@ const emitQuizDetail = async (socket, session) => {
 };
 
 const useSocket = (server, io) => {
-    // const io = new Server(server, {
-    //     cors: {
-    //         origin: '*',
-    //         methods: ['GET', 'POST']
-    //     }
-    // });
-
     io.on('connection', (socket) => {
         console.log('A user connected: ', socket.id);
         let currentSessionId = null;
@@ -57,6 +50,9 @@ const useSocket = (server, io) => {
                     }
                 }
 
+                socket.join(hostId);
+                socket.join(`${hostId}-player`);
+
                 // if (!user)
                 // const matchName = session.participants.find(participant => partici)
 
@@ -83,9 +79,9 @@ const useSocket = (server, io) => {
                 // emitSessionInfo(socket, session);
 
                 // Notify the host of the new participant
-                io.emit('new_participant', newParticipant);
+                io.to(hostId).emit('new_participant', newParticipant);
                 emitQuizDetail(socket, session);
-                io.emit('session_active', false);
+                socket.emit('session_active', false);
             } catch (error) {
                 console.error('Error joining session:', error);
             }
@@ -102,7 +98,9 @@ const useSocket = (server, io) => {
                 }
 
                 socket.join(hostId); // Host listens for updates
-                socket.emit('session_info', session);
+                socket.join(`${hostId}-host`); // Host listens for updates
+
+                socket.to(hostId).emit('session_info', session);
 
                 socket.on('disconnect', async () => {
                     console.log(`HOST ${hostId} disconnected`);
@@ -112,7 +110,7 @@ const useSocket = (server, io) => {
                     await Session.updateOne({ _id: session._id }, { $set: { is_active: false } });
 
                     // io.emit('quiz_info', session);
-                    io.emit('session_active', false);
+                    io.to(hostId).emit('session_active', false);
                     socket.leave(hostId);
                 });
             } catch (error) {
@@ -123,12 +121,7 @@ const useSocket = (server, io) => {
         // When the host starts the game
         socket.on('start_countdown', async (hostId) => {
             try {
-                // const session = await Session.findOne({ host_id: hostId });
-                // if (!session) {
-                //     socket.emit('session_error', 'Session not found');
-                //     return;
-                // }
-                io.emit('countdown_started'); // Broadcast session info
+                io.to(hostId).emit('countdown_started');
             } catch (error) {
                 console.error('Error starting game:', error);
             }
@@ -138,20 +131,35 @@ const useSocket = (server, io) => {
             try {
                 const session = await Session.findOne({ host_id: hostId });
                 if (!session) {
-                    socket.emit('session_error', 'Session not found');
+                    socket.to(hostId).emit('session_error', 'Session not found');
                     return;
                 }
 
-                io.emit('session_active', true);
-                // session.is_active = true; // Game started
-                // await session.save();
-                await Session.updateOne({ _id: session._id }, { $set: { is_active: true } });
+                io.to(hostId).emit('session_active', true);
 
-                // Emit game started event to all participants
-                // io.emit('session_info', session); // Broadcast session info
-                // emitQuizDetail(io, session);
+                await Session.updateOne({ _id: session._id }, { $set: { is_active: true } });
             } catch (error) {
                 console.error('Error starting game:', error);
+            }
+        });
+
+        socket.on('navigate_question', async (data) => {
+            try {
+                const { hostId, ...props } = data;
+
+                io.to(`${hostId}-player`).emit('question_changed_index', props);
+            } catch (error) {
+                console.error('Something went wrong: ', error);
+            }
+        });
+
+        socket.on('set_countdown_question', async (data) => {
+            try {
+                const { hostId, time } = data;
+
+                io.to(`${hostId}-player`).emit('question_countdown', time);
+            } catch (error) {
+                console.error('Something went wrong:', error);
             }
         });
 
@@ -159,7 +167,7 @@ const useSocket = (server, io) => {
             try {
                 const { hostId, ...props } = data;
 
-                io.to(hostId).emit('participant_selected', props);
+                io.to(`${hostId}-host`).emit('participant_selected', props);
             } catch (error) {
                 console.error('Fail to select answer:', error);
             }
@@ -170,7 +178,7 @@ const useSocket = (server, io) => {
             try {
                 const session = await Session.findOne({ host_id: hostId });
                 if (!session) {
-                    socket.emit('session_error', 'Session not found');
+                    socket.to(hostId).emit('session_error', 'Session not found');
                     return;
                 }
 
@@ -180,7 +188,6 @@ const useSocket = (server, io) => {
 
                 // Emit session end to all participants
                 io.to(hostId).emit('session_info', session);
-                io.emit('session_info', session); // Broadcast session info
             } catch (error) {
                 console.error('Error ending game:', error);
             }

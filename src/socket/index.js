@@ -143,6 +143,16 @@ const useSocket = (server, io) => {
             }
         });
 
+        socket.on('count_submit', (data) => {
+            try {
+                const { hostId, submittedTotal } = data;
+
+                io.to(`${hostId}-player`).emit('total_submitted', submittedTotal);
+            } catch (error) {
+                console.error('Something went wrong: ', error);
+            }
+        });
+
         socket.on('navigate_question', async (data) => {
             try {
                 const { hostId, ...props } = data;

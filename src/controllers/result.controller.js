@@ -3,7 +3,7 @@ const Result = require('../models/result.model');
 exports.getById = async (req, res) => {
     try {
         const { id: host_id } = req.params;
-        const result = Result.findOne({ host_id });
+        const result = await Result.findOne({ host_id });
 
         if (!result) throw Error();
 

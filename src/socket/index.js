@@ -105,8 +105,6 @@ const useSocket = (server, io) => {
                 socket.on('disconnect', async () => {
                     console.log(`HOST ${hostId} disconnected`);
 
-                    console.log('RUN HEEEEEEEEEEEEEEEEEEEEEEEEEEEERRRRRRRRRE');
-
                     await Session.updateOne({ _id: session._id }, { $set: { is_active: false } });
 
                     // io.emit('quiz_info', session);
@@ -192,12 +190,17 @@ const useSocket = (server, io) => {
                     return;
                 }
 
-                session.is_active = false; // Game ended
-                session.ended_at = new Date();
-                await session.save();
+                // session.is_active = false; // Game ended
+                // session.ended_at = new Date();
+                // await session.save();
+
+                await Session.updateOne(
+                    { _id: session._id },
+                    { $set: { is_finished: true, ended_at: new Date() } }
+                );
 
                 // Emit session end to all participants
-                io.to(hostId).emit('session_info', session);
+                io.to(hostId).emit('game_ended');
             } catch (error) {
                 console.error('Error ending game:', error);
             }

@@ -33,6 +33,7 @@ const sessionSchema = new Schema(
             }
         ],
         is_active: { type: Boolean, default: false },
+        is_finished: { type: Boolean, default: false },
         game_settings: {
             // time_limit: { type: Number, default: 0 }, // Time limit per question in seconds
             max_participants: { type: Number, default: 9999 }

@@ -5,6 +5,7 @@ exports.getById = async (req, res) => {
         const { id: host_id } = req.params;
         const result = await Result.findOne({ host_id });
 
+        console.log({result});
         if (!result) throw Error();
 
         res.status(200).json({ success: true, message: 'Fetch successfully!', data: result });

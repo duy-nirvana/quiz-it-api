@@ -45,3 +45,18 @@ exports.createSession = async (req, res) => {
         res.status(400).json({ success: false, message: 'Fail to created!', error: error.message });
     }
 };
+
+exports.completeSession = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        await Session.updateOne({ _id: id }, { $set: { is_finished: true, ended_at: new Date() } });
+
+        res.status(201).json({
+            success: true,
+            message: 'Update successfully'
+        });
+    } catch (error) {
+        res.status(400).json({ success: false, message: 'Fail to update!', error: error.message });
+    }
+};

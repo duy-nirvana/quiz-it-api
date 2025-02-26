@@ -18,10 +18,9 @@ const passwordResetTokenSchema = Schema({
 
 const userSchema = new Schema(
     {
-        username: { type: String, unique: true },
         email: { type: String, required: true, unique: true },
-        password_hash: { type: String, required: true },
-        salt: { type: String, required: true },
+        password_hash: { type: String },
+        salt: { type: String },
         roles: [{ type: String, default: 'user' }],
         is_verified: { type: Boolean, default: false },
         auth_providers: [authProviderSchema],
@@ -30,7 +29,9 @@ const userSchema = new Schema(
         last_login: Date,
         account_status: { type: String, default: 'active' }, // e.g., 'active', 'suspended'
         failed_login_attempts: { type: Number, default: 0 },
-        password_reset_token: passwordResetTokenSchema
+        password_reset_token: passwordResetTokenSchema,
+        google_id: { type: String },
+        name: { type: String }
     },
     { timestamps: true }
 );

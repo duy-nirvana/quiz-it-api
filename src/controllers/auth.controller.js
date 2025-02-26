@@ -51,3 +51,41 @@ exports.login = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+exports.google = async (req, res) => {
+    const { access_token } = req.body;
+
+    if (!access_token) {
+        return res.status(400).json({ message: 'Access token is required' });
+    }
+
+    try {
+        const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${access_token}` }
+        });
+
+        const payload = await response.json();
+
+        let user = await User.findOne({ google_id: payload.sub });
+
+        if (!user) {
+            console.log('IN CREARETE NEW USER');
+            user = new User({
+                google_id: payload.sub,
+                name: payload.name,
+                email: payload.email
+            });
+            await user.save();
+            console.log({ user });
+        }
+
+        // Generate JWT for your app's auth
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+
+        res.json({ message: 'Login successfuly!', data: { access_token: token } });
+    } catch (error) {
+        console.log({ error });
+        res.status(500).json({ message: 'Invalid Google token' });
+    }
+};

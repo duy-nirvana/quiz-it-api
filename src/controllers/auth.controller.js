@@ -22,16 +22,27 @@ exports.register = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
-    const { email, password } = req.body;
     try {
+        const { email, password, is_remember_me } = req.body;
+
         const user = await User.findOne({ email });
+
         if (!user || !(await user.isValidPassword(password))) {
             return res.status(400).json({ message: 'Invalid credentials' });
         }
 
-        const access_token = jwt.sign({ id: user._id, roles: user.roles }, process.env.JWT_SECRET, {
-            expiresIn: '10h'
-        });
+        let options = {};
+        if (!is_remember_me) {
+            options = {
+                expiresIn: '7h'
+            };
+        }
+
+        const access_token = jwt.sign(
+            { id: user._id, roles: user.roles },
+            process.env.JWT_SECRET,
+            options
+        );
         user.last_login = new Date();
         await user.save();
 

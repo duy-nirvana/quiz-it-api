@@ -6,12 +6,31 @@ const Answer = require('../models/answer.model');
 
 exports.getAll = async (req, res) => {
     try {
-        const quizzes = await Quiz.find(req.query || {}).populate({
-            path: 'questions',
-            populate: { path: 'answers' }
-        });
+        const { limit, page, excluded_id, ...query } = req.query || {};
 
-        res.status(200).json({ success: true, message: 'Fetch successfully!', data: quizzes });
+        if (excluded_id) {
+            query.created_by = { $ne: excluded_id };
+        }
+
+        const pageOptions = {
+            page: parseInt(page - 1, 10) || 0,
+            limit: parseInt(limit, 10) || 10
+        };
+
+        console.log({ query });
+
+        const total = await Quiz.countDocuments(query);
+        const quizzes = await Quiz.find(query)
+            .skip(pageOptions.page * pageOptions.limit)
+            .limit(pageOptions.limit)
+            .populate('questions', 'thumbnail');
+
+        res.status(200).json({
+            success: true,
+            message: 'Fetch successfully!',
+            total,
+            data: quizzes
+        });
     } catch (error) {
         res.status(400).json({ success: false, message: 'Fail to fetch!', error: error.message });
     }

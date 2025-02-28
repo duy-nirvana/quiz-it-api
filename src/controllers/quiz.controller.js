@@ -6,7 +6,7 @@ const Answer = require('../models/answer.model');
 
 exports.getAll = async (req, res) => {
     try {
-        const { limit, page, excluded_id, ...query } = req.query || {};
+        const { limit, page, search, excluded_id, ...query } = req.query || {};
 
         if (excluded_id) {
             query.created_by = { $ne: excluded_id };
@@ -17,10 +17,17 @@ exports.getAll = async (req, res) => {
             limit: parseInt(limit, 10) || 10
         };
 
-        console.log({ query });
+        const regex = new RegExp(search, 'i');
 
-        const total = await Quiz.countDocuments(query);
-        const quizzes = await Quiz.find(query)
+        const total = await Quiz.countDocuments({
+            ...query,
+            title: { $regex: regex }
+        });
+        const quizzes = await Quiz.find({ ...query, title: { $regex: regex } })
+            .collation({
+                locale: 'vi',
+                strength: 1
+            })
             .skip(pageOptions.page * pageOptions.limit)
             .limit(pageOptions.limit)
             .populate('questions', 'thumbnail');

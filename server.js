@@ -18,7 +18,8 @@ const io = new Server(server, {
     cors: {
         origin: '*', // Allow all origins for testing
         methods: ['GET', 'POST']
-    }
+    },
+    transports: ["polling"],
 });
 
 InitiateMongoServer();

@@ -1,1 +1,1 @@
-API for quiz-it app
+APU for project [https://github.com/duy-nirvana/quiz-it](https://github.com/duy-nirvana/quiz-it)

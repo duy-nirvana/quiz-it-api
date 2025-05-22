@@ -19,7 +19,6 @@ const io = new Server(server, {
         origin: '*', // Allow all origins for testing
         methods: ['GET', 'POST']
     },
-    transports: ["polling"],
 });
 
 InitiateMongoServer();

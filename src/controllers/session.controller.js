@@ -34,7 +34,17 @@ exports.createSession = async (req, res) => {
             { new: true }
         );
 
-        const savedSession = await session.save().then((session) => session.populate('quiz'));
+        const savedSession = await session.save().then((session) =>
+            session.populate({
+                path: 'quiz',
+                populate: {
+                    path: 'questions',
+                    populate: {
+                        path: 'answers'
+                    }
+                }
+            })
+        );
 
         res.status(201).json({
             success: true,
